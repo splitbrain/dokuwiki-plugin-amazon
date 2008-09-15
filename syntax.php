@@ -19,16 +19,6 @@ if(!defined('AMAZON_APIKEY')) define('AMAZON_APIKEY','0R9FK149P6SYHXZZDZ82');
  * need to inherit from this class
  */
 class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
-    //shorten string to this length on output
-    var $MAXCHARS = 25; //set to 0 if not wanted
-
-
-    // set your partnerid for the different local sites here
-    var $partnerid = array(
-        'de'  => 'ballermannsyndic',
-        'com' => 'splitbrainorg-20',
-    );
-
 
     /**
      * return some info
@@ -37,7 +27,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         return array(
             'author' => 'Andreas Gohr',
             'email'  => 'andi@splitbrain.org',
-            'date'   => '2007-04-25',
+            'date'   => '2008-09-15',
             'name'   => 'Amazon Plugin',
             'desc'   => 'Pull bookinfo from Amazon',
             'url'    => 'http://wiki.splitbrain.org/plugin:amazon',
@@ -66,7 +56,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
      * Connect pattern to lexer
      */
     function connectTo($mode) {
-      $this->Lexer->addSpecialPattern('\{\{amazon>[^}]*\}\}',$mode,'plugin_amazon');
+      $this->Lexer->addSpecialPattern('\{\{amazon>[\w:]+\}\}',$mode,'plugin_amazon');
     }
 
     /**
@@ -76,22 +66,31 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         $match = substr($match,9,-2); // Strip markup
         list($ctry,$asin) = explode(':',$match);
 
+        // no country given?
         if(empty($asin)){
             $asin = $ctry;
             $ctry = 'us';
         }
+
+        // correct country given?
+        if(!preg_match('/^(us|uk|jp|de|fr|ca)$/',$ctry)){
+            $ctry = 'us';
+        }
+
+        // get partner id
+        $partner = $this->getConf('partnerid_'.$ctry);
+
+        // correct domains
         if($ctry == 'us') $ctry = 'com';
         if($ctry == 'uk') $ctry = 'co.uk';
-        if($ctry == 'jp') $ctry = 'co.jp';
-
-        $partner = $this->partnerid[$ctry];
 
         // build API Url
-        $url = 'http://webservices.amazon.'.$ctry.'/onca/xml?Service=AWSECommerceService'.
-               '&AWSAccessKeyId='.AMAZON_APIKEY.
-               '&Operation=ItemLookup&IdType=ASIN&ItemId='.$asin.
-               '&ResponseGroup=Medium,OfferFull'.
-               '&AssociateTag='.$partner;
+        $url = "http://ecs.amazonaws.$ctry/onca/xml?Service=AWSECommerceService&AWSAccessKeyId=".AMAZON_APIKEY.
+               "&AssociateTag=$partner".
+               "&Operation=ItemLookup&IdType=ASIN&ItemId=$asin".
+               "&ResponseGroup=Medium,OfferFull";
+
+
 
         // fetch it
         $http = new DokuHTTPClient();
@@ -111,7 +110,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
     function render($mode, &$renderer, $data) {
         if($mode == 'xhtml'){
             if(!count($data)){
-                $renderer .= 'failed to fetch data';
+                $renderer->doc .= '<p>failed to fetch data</p>';
                 return false;
             }
             $renderer->doc .= $this->_format($data);
@@ -132,15 +131,22 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         $item = $data['ITEMLOOKUPRESPONSE'][0]['ITEMS'][0]['ITEM'][0];
         $attr = $item['ITEMATTRIBUTES'][0];
 
-//        dbg($attr);
+//        dbg($item);
+
+        $img = '';
+        if(!$img) $img = $item['MEDIUMIMAGE'][0]['URL'][0]['VALUE'];
+        if(!$img) $img = $item['LARGEIMAGE'][0]['URL'][0]['VALUE'];
+        if(!$img) $img = $item['SMALLIMAGE'][0]['URL'][0]['VALUE'];
+        if(!$img) $img = 'http://images.amazon.com/images/P/01.MZZZZZZZ.gif'; // transparent pixel
+
+        $img = ml($img,array('w'=>$this->getConf('imgw'),'h'=>$this->getConf('imgh')));
 
         ob_start();
         print '<div class="amazon">';
         print '<a href="'.$item['DETAILPAGEURL'][0]['VALUE'].'"';
         if($conf['target']['extern']) print ' target="'.$conf['target']['extern'].'"';
         print '>';
-        print '<img height="60" src="'.DOKU_BASE.'lib/exe/fetch.php?media='.
-                urlencode($item['SMALLIMAGE'][0]['URL'][0]['VALUE']).'&amp;h=60" alt="" />';
+        print '<img src="'.$img.'" width="'.$this->getConf('imgw').'" height="'.$this->getConf('imgh').'" alt="" />';
         print '</a>';
 
 
@@ -186,9 +192,9 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
     }
 
     function display($string){
-        if($this->MAXCHARS && utf8_strlen($string) > $this->MAXCHARS){
+        if($this->getConf('maxlen') && utf8_strlen($string) > $this->getConf('maxlen')){
             print '<span title="'.htmlspecialchars($string).'">';
-            $string = utf8_substr($string,0,$this->MAXCHARS - 3);
+            $string = utf8_substr($string,0,$this->getConf('maxlen') - 3);
             print htmlspecialchars($string);
             print '&hellip;</span>';
         }else{
@@ -199,4 +205,3 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
 }
 
 //Setup VIM: ex: et ts=4 enc=utf-8 :
-?>
