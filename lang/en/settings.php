@@ -3,9 +3,10 @@
  * language strings for the amazon plugin settings
  */
 
-$lang['maxlen'] = 'Maximal number of characters to use for the displayed titles. Set to 0 for no shortening.';
-$lang['imgw']   = 'Image width';
-$lang['imgh']   = 'Image height';
+$lang['maxlen']    = 'Maximal number of characters to use for the displayed titles. Set to 0 for no shortening.';
+$lang['imgw']      = 'Image width';
+$lang['imgh']      = 'Image height';
+$lang['showprice'] = 'Show the lowest Amazon price.';
 
 $lang['partner_us']     = 'PartnerID for the American Amazon store.';
 $lang['partner_de']     = 'PartnerID for the German Amazon store.';

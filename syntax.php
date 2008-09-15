@@ -135,7 +135,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         $item = $data['ITEMLOOKUPRESPONSE'][0]['ITEMS'][0]['ITEM'][0];
         $attr = $item['ITEMATTRIBUTES'][0];
 
-//        dbg($item);
+//        dbg($attr);
 
         $img = '';
         if(!$img) $img = $item['MEDIUMIMAGE'][0]['URL'][0]['VALUE'];
@@ -188,6 +188,11 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         }
         print '</div>';
 
+        if($this->getConf('showprice')){
+            print '<div class="amazon_price">';
+            print htmlspecialchars($attr['LISTPRICE'][0]['FORMATTEDPRICE'][0]['VALUE']);
+            print '</div>';
+        }
         print '</div>';
         $out = ob_get_contents();
         ob_end_clean();

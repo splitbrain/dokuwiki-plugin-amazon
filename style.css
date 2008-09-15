@@ -5,7 +5,7 @@ div.dokuwiki div.amazon {
 div.dokuwiki div.amazon img {
     float: left;
     margin-right: 4px;
-    padding: 1px;
+    padding: 2px;
     border: 1px solid #333;
     background-color: #efefef;
 }
@@ -13,3 +13,9 @@ div.dokuwiki div.amazon img {
 div.dokuwiki div.amazon_isbn{
     font-size: 90%;
 }
+
+div.dokuwiki div.amazon_price{
+    font-size: 85%;
+    color: #6f0000
+}
+

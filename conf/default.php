@@ -3,9 +3,10 @@
  * Defaults for the amazon plugin
  */
 
-$conf['maxlen'] = 25;
-$conf['imgw']   = 42;
-$conf['imgh']   = 60;
+$conf['maxlen']    = 25;
+$conf['imgw']      = 42;
+$conf['imgh']      = 60;
+$conf['showprice'] = 0;
 
 $conf['partner_us']     = 'splitbrain-20';
 $conf['partner_de']     = 'splitbrain-21';
