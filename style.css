@@ -1,0 +1,12 @@
+div.amazon {
+	height: 70px;
+}
+
+div.amazon img {
+	float: left;
+	margin-right: 4px;
+}
+
+div.amazon_isbn{
+  font-size: 90%;
+}
