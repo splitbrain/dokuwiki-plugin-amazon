@@ -30,7 +30,7 @@ class XMLParser {
             $this->data = $data_source;
 
         elseif ($data_source_type == 'stream') {
-            while (!feof($data_source))  
+            while (!feof($data_source))
                 $this->data .= fread($data_source, 1000);
 
         // try filename, then if that fails...
@@ -49,7 +49,7 @@ class XMLParser {
     // Parse the XML file into a verbose, flat array struct.
     // Then, coerce that into a simple nested array.
     function getTree() {
-        $parser = xml_parser_create('ISO-8859-1');
+        $parser = xml_parser_create('UTF-8');
         xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
         xml_parse_into_struct($parser, $this->data, $vals, $index);
         xml_parser_free($parser);
@@ -58,8 +58,8 @@ class XMLParser {
         return $this->getchildren($vals, $i);
     }
 
-    // internal function: build a node of the tree    
-    function buildtag($thisvals, $vals, &$i, $type) { 
+    // internal function: build a node of the tree
+    function buildtag($thisvals, $vals, &$i, $type) {
         // JDL + JM: PHP 5 requires initialization
         $tag = array();
 
@@ -78,10 +78,10 @@ class XMLParser {
     }
 
     // internal function: build an nested array representing children
-    function getchildren($vals, &$i) { 
+    function getchildren($vals, &$i) {
         $children = array();     // Contains node data
 
-        // Node has CDATA before it's children   
+        // Node has CDATA before it's children
         if ($i > -1 && isset($vals[$i]['value']))
             $children['VALUE'] = $vals[$i]['value'];
 
@@ -95,7 +95,7 @@ class XMLParser {
             if ($type === 'cdata')
                 $children['VALUE'] .= $vals[$i]['value'];
 
-            // 'complete':  At end of current branch  
+            // 'complete':  At end of current branch
             // 'open':      Node has children, recurse
             elseif ($type === 'complete' || $type === 'open') {
                 // EP: Preserve parent tag name
@@ -118,6 +118,6 @@ class XMLParser {
                 if (is_array($value) && (count($value) == 1))
                     $children[$key] = $value[0];
         return $children;
-    } 
+    }
 }
 ?>
