@@ -156,17 +156,17 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
 
         print '<div class="amazon_author">';
         if($attr['AUTHOR']){
-            $this->display($attr['AUTHOR'][0]['VALUE']);
+            $this->display($attr['AUTHOR']);
         }elseif($attr['DIRECTOR']){
-            $this->display($attr['DIRECTOR'][0]['VALUE']);
+            $this->display($attr['DIRECTOR']);
         }elseif($attr['ARTIST']){
-            $this->display($attr['ARTIST'][0]['VALUE']);
+            $this->display($attr['ARTIST']);
         }elseif($attr['STUDIO']){
-            $this->display($attr['STUDIO'][0]['VALUE']);
+            $this->display($attr['STUDIO']);
         }elseif($attr['LABEL']){
-            $this->display($attr['LABEL'][0]['VALUE']);
+            $this->display($attr['LABEL']);
         }elseif($attr['BRAND']){
-            $this->display($attr['BRAND'][0]['VALUE']);
+            $this->display($attr['BRAND']);
         }
         print '</div>';
 
@@ -200,7 +200,19 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         return $out;
     }
 
-    function display($string){
+    function display($input){
+        $string = '';
+        if(is_array($input)){
+            foreach($input as $opt){
+                if(is_array($opt) && $opt['VALUE']){
+                    $string .= $opt['VALUE'].', ';
+                }
+            }
+            $string = rtrim($string,', ');
+        }else{
+            $string = $input;
+        }
+
         if($this->getConf('maxlen') && utf8_strlen($string) > $this->getConf('maxlen')){
             print '<span title="'.htmlspecialchars($string).'">';
             $string = utf8_substr($string,0,$this->getConf('maxlen') - 3);
