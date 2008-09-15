@@ -56,7 +56,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
      * Connect pattern to lexer
      */
     function connectTo($mode) {
-      $this->Lexer->addSpecialPattern('\{\{amazon>[\w:]+\}\}',$mode,'plugin_amazon');
+      $this->Lexer->addSpecialPattern('\{\{amazon>[\w:\\-]+\}\}',$mode,'plugin_amazon');
     }
 
     /**
@@ -87,9 +87,13 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         // build API Url
         $url = "http://ecs.amazonaws.$ctry/onca/xml?Service=AWSECommerceService&AWSAccessKeyId=".AMAZON_APIKEY.
                "&AssociateTag=$partner".
-               "&Operation=ItemLookup&IdType=ASIN&ItemId=$asin".
+               "&Operation=ItemLookup".
                "&ResponseGroup=Medium,OfferFull";
-
+        if(strlen($asin)<13){
+            $url .= "&IdType=ASIN&ItemId=$asin";
+        }else{
+            $url .= "&SearchIndex=Books&IdType=ISBN&ItemId=$asin";
+        }
 
 
         // fetch it
