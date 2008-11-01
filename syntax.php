@@ -143,7 +143,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             $opts['ListId']         = $asin;
             $opts['Sort']           = 'Priority';
             if($type == 'wishlist'){
-                $opts['ListType']   = 'Wishlist';
+                $opts['ListType']   = 'WishList';
             }else{
                 $opts['ListType']   = 'Listmania';
             }
