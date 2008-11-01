@@ -27,7 +27,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         return array(
             'author' => 'Andreas Gohr',
             'email'  => 'andi@splitbrain.org',
-            'date'   => '2008-09-15',
+            'date'   => '2008-11-01',
             'name'   => 'Amazon Plugin',
             'desc'   => 'Pull bookinfo from Amazon',
             'url'    => 'http://wiki.splitbrain.org/plugin:amazon',
@@ -56,15 +56,50 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
      * Connect pattern to lexer
      */
     function connectTo($mode) {
-      $this->Lexer->addSpecialPattern('\{\{amazon>[\w:\\-]+\}\}',$mode,'plugin_amazon');
+        $this->Lexer->addSpecialPattern('\{\{amazon>[\w:\\- =]+\}\}',$mode,'plugin_amazon');
+        $this->Lexer->addSpecialPattern('\{\{wishlist>[\w:\\- =]+\}\}',$mode,'plugin_amazon');
+        $this->Lexer->addSpecialPattern('\{\{amazonlist>[\w:\\- =]+\}\}',$mode,'plugin_amazon');
     }
 
     /**
-     * Handle the match
+     * Do all the API work, fetch the data, parse it and return it for the renderer
      */
     function handle($match, $state, $pos, &$handler){
-        $match = substr($match,9,-2); // Strip markup
-        list($ctry,$asin) = explode(':',$match);
+        // check type and remove markup
+        if(substr($match,2,8) == 'wishlist'){
+            $match = substr($match,11,-2);
+            $type = 'wishlist';
+        }elseif(substr($match,2,10) == 'amazonlist'){
+            $match = substr($match,13,-2);
+            $type = 'amazonlist';
+        }else{
+            $match = substr($match,9,-2);
+            $type = 'product';
+        }
+        list($ctry,$asin) = explode(':',$match,2);
+
+        // default parameters...
+        $params = array(
+            'type'   => $type,
+            'imgw'   => $this->getConf('imgw'),
+            'imgh'   => $this->getConf('imgh'),
+            'maxlen' => $this->getConf('maxlen'),
+            'price'  => $this->getConf('showprice'),
+        );
+        // ...can be overridden
+        list($asin,$more) = explode(' ',$asin,2);
+        if(preg_match('/(\d+)x(\d+)/i',$more,$match)){
+            $params['imgw'] = $match[1];
+            $params['imgh'] = $match[2];
+        }
+        if(preg_match('/=(\d+)/',$more,$match)){
+            $params['maxlen'] = $match[1];
+        }
+        if(preg_match('/noprice/i',$more,$match)){
+            $params['price'] = false;
+        }elseif(preg_match('/(show)?price/i',$more,$match)){
+            $params['price'] = true;
+        }
 
         // no country given?
         if(empty($asin)){
@@ -84,94 +119,146 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         if($ctry == 'us') $ctry = 'com';
         if($ctry == 'uk') $ctry = 'co.uk';
 
-        // build API Url
-        $url = "http://ecs.amazonaws.$ctry/onca/xml?Service=AWSECommerceService&AWSAccessKeyId=".AMAZON_APIKEY.
-               "&AssociateTag=$partner".
-               "&Operation=ItemLookup".
-               "&ResponseGroup=Medium,OfferFull";
-        if(strlen($asin)<13){
-            $url .= "&IdType=ASIN&ItemId=$asin";
+        // basic API parameters
+        $opts = array();
+        $opts['Service']        = 'AWSECommerceService';
+        $opts['AWSAccessKeyId'] = AMAZON_APIKEY;
+        $opts['AssociateTag']   = $partner;
+        if($type == 'product'){
+            // parameters for querying a single product
+            $opts['Operation']      = 'ItemLookup';
+            $opts['ResponseGroup']  = 'Medium,OfferSummary';
+            if(strlen($asin)<13){
+                $opts['IdType'] = 'ASIN';
+                $opts['ItemId'] = $asin;
+            }else{
+                $opts['SearchIndex'] = 'Books';
+                $opts['IdType']      = 'ISBN';
+                $opts['ItemId']      = $asin;
+            }
         }else{
-            $url .= "&SearchIndex=Books&IdType=ISBN&ItemId=$asin";
+            // parameters to query a wishlist
+            $opts['Operation']      = 'ListLookup';
+            $opts['ResponseGroup']  = 'ListItems,Medium,OfferSummary';
+            $opts['ListId']         = $asin;
+            $opts['Sort']           = 'Priority';
+            if($type == 'wishlist'){
+                $opts['ListType']   = 'Wishlist';
+            }else{
+                $opts['ListType']   = 'Listmania';
+            }
+        }
+        $url = "http://ecs.amazonaws.$ctry/onca/xml?".buildURLparams($opts,'&');
+
+        // support paged results
+        $result = array();
+        $pages = 1;
+        for($page=1; $page <= $pages; $page++){
+            // fetch it
+            $http = new DokuHTTPClient();
+            $xml  = $http->get($url.'&ProductPage='.$page);
+            if(empty($xml)) return $http->error;
+
+            // parse it
+            require_once(dirname(__FILE__).'/XMLParser.php');
+            $xmlp = new XMLParser($xml);
+            $data = $xmlp->getTree();
+
+//            dbg($data);
+
+            // check for errors and return the item(s)
+            if($type == 'product'){
+                // error?
+                if($data['ITEMLOOKUPRESPONSE'][0]['ITEMS'][0]['REQUEST'][0]['ERRORS']){
+                    return $data['ITEMLOOKUPRESPONSE'][0]['ITEMS'][0]['REQUEST'][0]
+                                ['ERRORS'][0]['ERROR'][0]['MESSAGE'][0]['VALUE'];
+                }
+                // return item
+                $result = array_merge($result, (array)
+                              $data['ITEMLOOKUPRESPONSE'][0]['ITEMS'][0]['ITEM']);
+            }else{
+                // error?
+                if($data['LISTLOOKUPRESPONSE'][0]['LISTS'][0]['REQUEST'][0]['ERRORS']){
+                    return $data['LISTLOOKUPRESPONSE'][0]['LISTS'][0]['REQUEST'][0]
+                                ['ERRORS'][0]['ERROR'][0]['MESSAGE'][0]['VALUE'];
+                }
+                // multiple pages?
+                $pages = (int) $data['LISTLOOKUPRESPONSE'][0]['LISTS'][0]['LIST'][0]
+                                        ['TOTALPAGES'][0]['VALUE'];
+
+                // return items
+                $result = array_merge($result, (array)
+                              $data['LISTLOOKUPRESPONSE'][0]['LISTS'][0]['LIST'][0]['LISTITEM']);
+            }
         }
 
-
-        // fetch it
-        $http = new DokuHTTPClient();
-        $xml  = $http->get($url);
-        if(empty($xml)){
-            return array();
-        }
-
-        require_once(dirname(__FILE__).'/XMLParser.php');
-        $xmlp = new XMLParser($xml);
-        return $xmlp->getTree();
+        return array($result,$params);
     }
 
     /**
      * Create output
      */
     function render($mode, &$renderer, $data) {
-        if($mode == 'xhtml'){
-            if(!count($data)){
-                $renderer->doc .= '<p>failed to fetch data</p>';
-                return false;
+        if($mode != 'xhtml') return false;
+        if(is_array($data)){
+            foreach($data[0] as $item){
+                $renderer->doc .= $this->_format($item,$data[1]);
             }
-            $renderer->doc .= $this->_format($data);
-            return true;
+        }else{
+            $renderer->doc .= '<p>failed to fetch data: <code>'.hsc($data).'</code></p>';
         }
-        return false;
+        return true;
     }
 
-    function _format($data){
-        global $conf;
-
-        if($data['ITEMLOOKUPRESPONSE'][0]['ITEMS'][0]['REQUEST'][0]['ERRORS']){
-            return $data['ITEMLOOKUPRESPONSE'][0]['ITEMS'][0]['REQUEST'][0]
-                        ['ERRORS'][0]['ERROR'][0]['MESSAGE'][0]['VALUE'];
-        }
-
-
-        $item = $data['ITEMLOOKUPRESPONSE'][0]['ITEMS'][0]['ITEM'][0];
+    /**
+     * Output a single item
+     */
+    function _format($item,$param){
+        if(isset($item['ITEM'])) $item = $item['ITEM'][0]; // sub item?
         $attr = $item['ITEMATTRIBUTES'][0];
+        if(!$attr) return ''; // happens on list items no longer in catalogue
 
+//        dbg($item);
 //        dbg($attr);
 
         $img = '';
         if(!$img) $img = $item['MEDIUMIMAGE'][0]['URL'][0]['VALUE'];
+        if(!$img) $img = $item['IMAGESETS'][0]['IMAGESET'][0]['MEDIUMIMAGE'][0]['URL'][0]['VALUE'];
         if(!$img) $img = $item['LARGEIMAGE'][0]['URL'][0]['VALUE'];
+        if(!$img) $img = $item['IMAGESETS'][0]['IMAGESET'][0]['LARGEIMAGE'][0]['URL'][0]['VALUE'];
         if(!$img) $img = $item['SMALLIMAGE'][0]['URL'][0]['VALUE'];
+        if(!$img) $img = $item['IMAGESETS'][0]['IMAGESET'][0]['SMALLIMAGE'][0]['URL'][0]['VALUE'];
         if(!$img) $img = 'http://images.amazon.com/images/P/01.MZZZZZZZ.gif'; // transparent pixel
 
-        $img = ml($img,array('w'=>$this->getConf('imgw'),'h'=>$this->getConf('imgh')));
+        $img = ml($img,array('w'=>$param['imgw'],'h'=>$param['imgh']));
 
         ob_start();
         print '<div class="amazon">';
         print '<a href="'.$item['DETAILPAGEURL'][0]['VALUE'].'"';
         if($conf['target']['extern']) print ' target="'.$conf['target']['extern'].'"';
         print '>';
-        print '<img src="'.$img.'" width="'.$this->getConf('imgw').'" height="'.$this->getConf('imgh').'" alt="" />';
+        print '<img src="'.$img.'" width="'.$param['imgw'].'" height="'.$param['imgh'].'" alt="" />';
         print '</a>';
 
 
         print '<div class="amazon_author">';
         if($attr['AUTHOR']){
-            $this->display($attr['AUTHOR']);
+            $this->display($attr['AUTHOR'],$param['maxlen']);
         }elseif($attr['DIRECTOR']){
-            $this->display($attr['DIRECTOR']);
+            $this->display($attr['DIRECTOR'],$param['maxlen']);
         }elseif($attr['ARTIST']){
-            $this->display($attr['ARTIST']);
+            $this->display($attr['ARTIST'],$param['maxlen']);
         }elseif($attr['STUDIO']){
-            $this->display($attr['STUDIO']);
+            $this->display($attr['STUDIO'],$param['maxlen']);
         }elseif($attr['LABEL']){
-            $this->display($attr['LABEL']);
+            $this->display($attr['LABEL'],$param['maxlen']);
         }elseif($attr['BRAND']){
-            $this->display($attr['BRAND']);
+            $this->display($attr['BRAND'],$param['maxlen']);
         }
         print '</div>';
 
         print '<div class="amazon_title">';
-        $this->display($attr['TITLE'][0]['VALUE']);
+        $this->display($attr['TITLE'][0]['VALUE'],$param['maxlen']);
         print '</div>';
 
 
@@ -179,19 +266,21 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         print '<div class="amazon_isbn">';
         if($attr['ISBN']){
             print 'ISBN ';
-            $this->display($attr['ISBN'][0]['VALUE']);
+            $this->display($attr['ISBN'][0]['VALUE'],$param['maxlen']);
         }elseif($attr['RUNNINGTIME']){
-            $this->display($attr['RUNNINGTIME'][0]['VALUE'].' ');
-            $this->display($attr['RUNNINGTIME'][0]['ATTRIBUTES']['UNITS']);
+            $this->display($attr['RUNNINGTIME'][0]['VALUE'].' ',$param['maxlen']);
+            $this->display($attr['RUNNINGTIME'][0]['ATTRIBUTES']['UNITS'],$param['maxlen']);
         }elseif($attr['PLATFORM']){
-            $this->display($attr['PLATFORM'][0]['VALUE']);
+            $this->display($attr['PLATFORM'][0]['VALUE'],$param['maxlen']);
         }
         print '</div>';
 
-        if($this->getConf('showprice')){
-            print '<div class="amazon_price">';
-            print htmlspecialchars($attr['LISTPRICE'][0]['FORMATTEDPRICE'][0]['VALUE']);
-            print '</div>';
+        if($param['price']){
+            $price = $item['OFFERSUMMARY'][0]['LOWESTNEWPRICE'][0]['FORMATTEDPRICE'][0]['VALUE'];
+            if(!$price) $price = $item['OFFERSUMMARY'][0]['LOWESTUSEDPRICE'][0]['FORMATTEDPRICE'][0]['VALUE'];
+            if($price){
+                print '<div class="amazon_price">'.hsc($price).'</div>';
+            }
         }
         print '</div>';
         $out = ob_get_contents();
@@ -200,7 +289,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         return $out;
     }
 
-    function display($input){
+    function display($input,$maxlen){
         $string = '';
         if(is_array($input)){
             foreach($input as $opt){
@@ -213,9 +302,9 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             $string = $input;
         }
 
-        if($this->getConf('maxlen') && utf8_strlen($string) > $this->getConf('maxlen')){
+        if($maxlen && utf8_strlen($string) > $maxlen){
             print '<span title="'.htmlspecialchars($string).'">';
-            $string = utf8_substr($string,0,$this->getConf('maxlen') - 3);
+            $string = utf8_substr($string,0,$maxlen - 3);
             print htmlspecialchars($string);
             print '&hellip;</span>';
         }else{
