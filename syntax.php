@@ -78,7 +78,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         }
 
         // get partner id
-        $partner = $this->getConf('partnerid_'.$ctry);
+        $partner = $this->getConf('partner_'.$ctry);
 
         // correct domains
         if($ctry == 'us') $ctry = 'com';
