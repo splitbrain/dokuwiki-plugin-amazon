@@ -15,5 +15,6 @@ $lang['partner_uk']     = 'PartnerID for the British Amazon store.';
 $lang['partner_fr']     = 'PartnerID for the French Amazon store.';
 $lang['partner_ca']     = 'PartnerID for the Canadian Amazon store.';
 
-
+$lang['showpurchased']  = 'Include already purchased items in displayed lists.';
+$lang['sort']           = 'Sort criteria to use for displayed lists.';
 

@@ -15,4 +15,5 @@ $conf['partner_uk']     = '';
 $conf['partner_fr']     = '';
 $conf['partner_ca']     = '';
 
-
+$conf['showpurchased'] = true;
+$conf['sort']          = 'Priority';

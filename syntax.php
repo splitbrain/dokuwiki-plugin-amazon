@@ -80,11 +80,13 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
 
         // default parameters...
         $params = array(
-            'type'   => $type,
-            'imgw'   => $this->getConf('imgw'),
-            'imgh'   => $this->getConf('imgh'),
-            'maxlen' => $this->getConf('maxlen'),
-            'price'  => $this->getConf('showprice'),
+            'type'      => $type,
+            'imgw'      => $this->getConf('imgw'),
+            'imgh'      => $this->getConf('imgh'),
+            'maxlen'    => $this->getConf('maxlen'),
+            'price'     => $this->getConf('showprice'),
+            'purchased' => $this->getConf('showpurchased'),
+            'sort'      => $this->getConf('sort'),
         );
         // ...can be overridden
         list($asin,$more) = explode(' ',$asin,2);
@@ -99,6 +101,18 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             $params['price'] = false;
         }elseif(preg_match('/(show)?price/i',$more,$match)){
             $params['price'] = true;
+        }
+        if(preg_match('/nopurchased/i',$more,$match)){
+            $params['purchased'] = false;
+        }elseif(preg_match('/(show)?purchased/i',$more,$match)){
+            $params['purchased'] = true;
+        }
+        if(preg_match('/sortprice/i',$more,$match)){
+            $params['sort'] = 'Price';
+        }elseif(preg_match('/sortpriority/i',$more,$match)){
+            $params['sort'] = 'Priority';
+        }elseif(preg_match('/sortadded/i',$more,$match)){
+            $params['sort'] = 'DateAdded';
         }
 
         // no country given?
@@ -138,10 +152,11 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             }
         }else{
             // parameters to query a wishlist
-            $opts['Operation']      = 'ListLookup';
-            $opts['ResponseGroup']  = 'ListItems,Medium,OfferSummary';
-            $opts['ListId']         = $asin;
-            $opts['Sort']           = 'Priority';
+            $opts['Operation']            = 'ListLookup';
+            $opts['ResponseGroup']        = 'ListItems,Medium,OfferSummary';
+            $opts['ListId']               = $asin;
+            $opts['Sort']                 = $params['sort'];
+            $opts['IsOmitPurchasedItems'] = ($params['purchased'] ? 'False' : 'True');
             if($type == 'wishlist'){
                 $opts['ListType']   = 'WishList';
             }else{
