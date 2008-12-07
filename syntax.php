@@ -27,7 +27,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         return array(
             'author' => 'Andreas Gohr',
             'email'  => 'andi@splitbrain.org',
-            'date'   => '2008-11-01',
+            'date'   => '2008-12-07',
             'name'   => 'Amazon Plugin',
             'desc'   => 'Pull bookinfo from Amazon',
             'url'    => 'http://wiki.splitbrain.org/plugin:amazon',
