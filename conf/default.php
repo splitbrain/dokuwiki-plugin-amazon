@@ -3,6 +3,9 @@
  * Defaults for the amazon plugin
  */
 
+$conf['publickey'] = '';
+$conf['privatekey'] = '';
+
 $conf['maxlen']    = 25;
 $conf['imgw']      = 42;
 $conf['imgh']      = 60;

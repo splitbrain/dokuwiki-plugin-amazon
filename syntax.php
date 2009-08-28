@@ -163,16 +163,22 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
                 $opts['ListType']   = 'Listmania';
             }
         }
-        $url = "http://ecs.amazonaws.$ctry/onca/xml?".buildURLparams($opts,'&');
 
         // support paged results
         $result = array();
         $pages = 1;
         for($page=1; $page <= $pages; $page++){
+            $opts['ProductPage'] = $page;
+
             // fetch it
             $http = new DokuHTTPClient();
-            $xml  = $http->get($url.'&ProductPage='.$page);
-            if(empty($xml)) return $http->error;
+            $url = $this->_signedRequestURI($ctry,$opts,$this->getConf('publickey'),$this->getConf('privatekey'));
+            $xml  = $http->get($url);
+            if(empty($xml)){
+                if($http->error) return $http->error;
+                if($http->status == 403) return 'Signature check failed, did you set your Access Keys in config?';
+                return 'unkown error';
+            }
 
             // parse it
             require_once(dirname(__FILE__).'/XMLParser.php');
@@ -223,6 +229,65 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             $renderer->doc .= '<p>failed to fetch data: <code>'.hsc($data).'</code></p>';
         }
         return true;
+    }
+
+    /**
+     * Create a signed Request URI
+     *
+     * Original copyright notice:
+     *
+     *   Copyright (c) 2009 Ulrich Mierendorff
+     *
+     *   Permission is hereby granted, free of charge, to any person obtaining a
+     *   copy of this software and associated documentation files (the "Software"),
+     *   to deal in the Software without restriction, including without limitation
+     *   the rights to use, copy, modify, merge, publish, distribute, sublicense,
+     *   and/or sell copies of the Software, and to permit persons to whom the
+     *   Software is furnished to do so, subject to the following conditions:
+     *
+     *   The above copyright notice and this permission notice shall be included in
+     *   all copies or substantial portions of the Software.
+     *
+     * @author Ulrich Mierendorff <ulrich.mierendorff@gmx.net>
+     * @link   http://mierendo.com/software/aws_signed_query/
+     */
+    function _signedRequestURI($region, $params, $public_key, $private_key){
+        $method = "GET";
+        $host = "ecs.amazonaws.".$region;
+        $uri = "/onca/xml";
+
+        // additional parameters
+        $params["Service"] = "AWSECommerceService";
+        $params["AWSAccessKeyId"] = $public_key;
+        // GMT timestamp
+        $params["Timestamp"] = gmdate("Y-m-d\TH:i:s\Z");
+        // API version
+        $params["Version"] = "2009-03-31";
+
+        // sort the parameters
+        ksort($params);
+
+        // create the canonicalized query
+        $canonicalized_query = array();
+        foreach ($params as $param=>$value)
+        {
+            $param = str_replace("%7E", "~", rawurlencode($param));
+            $value = str_replace("%7E", "~", rawurlencode($value));
+            $canonicalized_query[] = $param."=".$value;
+        }
+        $canonicalized_query = implode("&", $canonicalized_query);
+
+        // create the string to sign
+        $string_to_sign = $method."\n".$host."\n".$uri."\n".$canonicalized_query;
+
+        // calculate HMAC with SHA256 and base64-encoding
+        $signature = base64_encode(hash_hmac("sha256", $string_to_sign, $private_key, True));
+
+        // encode the signature for the request
+        $signature = str_replace("%7E", "~", rawurlencode($signature));
+
+        // create request
+        return "http://".$host.$uri."?".$canonicalized_query."&Signature=".$signature;
     }
 
     /**

@@ -3,6 +3,9 @@
  * Options for the amazon plugin
  */
 
+$meta['publickey']  = array('string');
+$meta['privatekey'] = array('string');
+
 $meta['maxlen']    = array('numeric');
 $meta['imgw']      = array('numeric');
 $meta['imgh']      = array('numeric');
