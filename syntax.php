@@ -27,7 +27,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         return array(
             'author' => 'Andreas Gohr',
             'email'  => 'andi@splitbrain.org',
-            'date'   => '2008-12-07',
+            'date'   => '2009-11-03',
             'name'   => 'Amazon Plugin',
             'desc'   => 'Pull bookinfo from Amazon',
             'url'    => 'http://wiki.splitbrain.org/plugin:amazon',
@@ -281,7 +281,13 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         $string_to_sign = $method."\n".$host."\n".$uri."\n".$canonicalized_query;
 
         // calculate HMAC with SHA256 and base64-encoding
-        $signature = base64_encode(hash_hmac("sha256", $string_to_sign, $private_key, True));
+        if(function_exists('hash_hmac')){
+            $signature = base64_encode(hash_hmac("sha256", $string_to_sign, $private_key, true));
+        }elseif(function_exists('mhash')){
+            $signature = base64_encode(mhash(MHASH_SHA256, $string_to_sign, $private_key));
+        }else{
+            msg('missing crypto function, can\'t sign request',-1);
+        }
 
         // encode the signature for the request
         $signature = str_replace("%7E", "~", rawurlencode($signature));
