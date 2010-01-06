@@ -1,0 +1,7 @@
+base    amazon
+author  Andreas Gohr
+email   andi@splitbrain.org
+date    2009-11-03
+name    Amazon Plugin
+desc    Pull bookinfo from Amazon
+url     http://www.dokuwiki.org/plugin:amazon

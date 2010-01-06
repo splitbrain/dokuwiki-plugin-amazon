@@ -21,20 +21,6 @@ if(!defined('AMAZON_APIKEY')) define('AMAZON_APIKEY','0R9FK149P6SYHXZZDZ82');
 class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
 
     /**
-     * return some info
-     */
-    function getInfo(){
-        return array(
-            'author' => 'Andreas Gohr',
-            'email'  => 'andi@splitbrain.org',
-            'date'   => '2009-11-03',
-            'name'   => 'Amazon Plugin',
-            'desc'   => 'Pull bookinfo from Amazon',
-            'url'    => 'http://wiki.splitbrain.org/plugin:amazon',
-        );
-    }
-
-    /**
      * What kind of syntax are we?
      */
     function getType(){
