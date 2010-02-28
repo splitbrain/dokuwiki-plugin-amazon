@@ -330,7 +330,11 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         print '</div>';
 
         print '<div class="amazon_title">';
+        print '<a href="'.$item['DETAILPAGEURL'][0]['VALUE'].'"';
+        if($conf['target']['extern']) print ' target="'.$conf['target']['extern'].'"';
+        print '>';
         $this->display($attr['TITLE'][0]['VALUE'],$param['maxlen']);
+        print '</a>';
         print '</div>';
 
 
