@@ -142,6 +142,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             $opts['ResponseGroup']        = 'ListItems,Medium,OfferSummary';
             $opts['ListId']               = $asin;
             $opts['Sort']                 = $params['sort'];
+            $opts['IsIncludeUniversal']   = 'True';
             $opts['IsOmitPurchasedItems'] = ($params['purchased'] ? 'False' : 'True');
             if($type == 'wishlist'){
                 $opts['ListType']   = 'WishList';
@@ -171,7 +172,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             $xmlp = new XMLParser($xml);
             $data = $xmlp->getTree();
 
-//            dbg($data);
+            //dbg($data);
 
             // check for errors and return the item(s)
             if($type == 'product'){
@@ -248,7 +249,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         // GMT timestamp
         $params["Timestamp"] = gmdate("Y-m-d\TH:i:s\Z");
         // API version
-        $params["Version"] = "2009-03-31";
+        $params["Version"] = "2009-11-01";
 
         // sort the parameters
         ksort($params);
@@ -288,12 +289,14 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
     function _format($item,$param){
         if(isset($item['ITEM'])) $item = $item['ITEM'][0]; // sub item?
         $attr = $item['ITEMATTRIBUTES'][0];
+        if(!$attr) $attr = $item['UNIVERSALLISTITEM'][0];
         if(!$attr) return ''; // happens on list items no longer in catalogue
 
 //        dbg($item);
 //        dbg($attr);
 
         $img = '';
+        if(!$img) $img = $item['UNIVERSALLISTITEM'][0]['IMAGEURL'][0]['VALUE'];
         if(!$img) $img = $item['MEDIUMIMAGE'][0]['URL'][0]['VALUE'];
         if(!$img) $img = $item['IMAGESETS'][0]['IMAGESET'][0]['MEDIUMIMAGE'][0]['URL'][0]['VALUE'];
         if(!$img) $img = $item['LARGEIMAGE'][0]['URL'][0]['VALUE'];
@@ -304,9 +307,12 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
 
         $img = ml($img,array('w'=>$param['imgw'],'h'=>$param['imgh']));
 
+        $link = $item['DETAILPAGEURL'][0]['VALUE'];
+        if(!$link) $link = $item['UNIVERSALLISTITEM'][0]['PRODUCTURL'][0]['VALUE'];
+
         ob_start();
         print '<div class="amazon">';
-        print '<a href="'.$item['DETAILPAGEURL'][0]['VALUE'].'"';
+        print '<a href="'.$link.'"';
         if($conf['target']['extern']) print ' target="'.$conf['target']['extern'].'"';
         print '>';
         print '<img src="'.$img.'" width="'.$param['imgw'].'" height="'.$param['imgh'].'" alt="" />';
@@ -326,11 +332,13 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             $this->display($attr['LABEL'],$param['maxlen']);
         }elseif($attr['BRAND']){
             $this->display($attr['BRAND'],$param['maxlen']);
+        }elseif($attr['SOLDBY'][0]['VALUE']){
+            $this->display($attr['SOLDBY'][0]['VALUE'],$param['maxlen']);
         }
         print '</div>';
 
         print '<div class="amazon_title">';
-        print '<a href="'.$item['DETAILPAGEURL'][0]['VALUE'].'"';
+        print '<a href="'.$link.'"';
         if($conf['target']['extern']) print ' target="'.$conf['target']['extern'].'"';
         print '>';
         $this->display($attr['TITLE'][0]['VALUE'],$param['maxlen']);
@@ -354,6 +362,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
         if($param['price']){
             $price = $item['OFFERSUMMARY'][0]['LOWESTNEWPRICE'][0]['FORMATTEDPRICE'][0]['VALUE'];
             if(!$price) $price = $item['OFFERSUMMARY'][0]['LOWESTUSEDPRICE'][0]['FORMATTEDPRICE'][0]['VALUE'];
+            if(!$price) $price = $attr['SAVEDPRICE'][0]['FORMATTEDPRICE'][0]['VALUE'];
             if($price){
                 print '<div class="amazon_price">'.hsc($price).'</div>';
             }
