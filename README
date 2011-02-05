@@ -1,7 +1,7 @@
 amazon Plugin for DokuWiki
 
 All documentation for this plugin can be found at
-http://www.dokuwiki.org/amazon
+http://www.dokuwiki.org/plugin:amazon
 
 If you install this plugin manually, make sure it is installed in
 lib/plugins/amazon/ - if the folder is called different it
