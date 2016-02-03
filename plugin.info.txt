@@ -1,7 +1,7 @@
 base    amazon
 author  Andreas Gohr
 email   andi@splitbrain.org
-date    2015-02-24
+date    2016-02-02
 name    Amazon Plugin
 desc    Pull article info from Amazon
 url     http://www.dokuwiki.org/plugin:amazon
