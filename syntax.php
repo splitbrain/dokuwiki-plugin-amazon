@@ -8,10 +8,6 @@
 
 if(!defined('DOKU_INC')) define('DOKU_INC',realpath(dirname(__FILE__).'/../../').'/');
 if(!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
-require_once(DOKU_PLUGIN.'syntax.php');
-require_once(DOKU_INC.'inc/HTTPClient.php');
-
-
 if(!defined('AMAZON_APIKEY')) define('AMAZON_APIKEY','0R9FK149P6SYHXZZDZ82');
 
 /**
@@ -168,7 +164,6 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             }
 
             // parse it
-            require_once(dirname(__FILE__).'/XMLParser.php');
             $xmlp = new XMLParser($xml);
             $data = $xmlp->getTree();
 
