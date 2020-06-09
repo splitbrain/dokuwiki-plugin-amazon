@@ -164,6 +164,7 @@ class syntax_plugin_amazon extends DokuWiki_Syntax_Plugin {
             }
 
             // parse it
+            require_once(dirname(__FILE__).'/XMLParser.php');
             $xmlp = new XMLParser($xml);
             $data = $xmlp->getTree();
 
