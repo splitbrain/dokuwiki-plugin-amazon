@@ -19,4 +19,4 @@ $meta['partner_fr']     = array('string');
 $meta['partner_ca']     = array('string');
 
 $meta['showpurchased'] = array('onoff');
-$meta['sort']          = array('multichoice', _choices => array('Priority', 'Price', 'DateAdded'));
+$meta['sort']          = array('multichoice', '_choices' => array('Priority', 'Price', 'DateAdded'));
