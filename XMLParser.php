@@ -22,7 +22,7 @@ class XMLParser {
 
     // Read in XML on object creation.
     // We can take raw XML data, a stream, a filename, or a url.
-    function XMLParser($data_source, $data_source_type='raw', $collapse_dups=0, $index_numeric=0) {
+    function __construct($data_source, $data_source_type='raw', $collapse_dups=0, $index_numeric=0) {
         $this->collapse_dups = $collapse_dups;
         $this->index_numeric = $index_numeric;
         $this->data = '';
